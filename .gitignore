@@ -2,5 +2,6 @@
 !.gitignore
 **/*.user
 **/*.filters
-/Debug/
-/Release/
+**/Debug/
+**/Release/
+**/temp/
