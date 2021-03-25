@@ -14,7 +14,11 @@ namespace p2p_chat {
     class Client sealed : public Peer {
 
         public:
+            Client();
+
             virtual int startSession() override;
+
+            void setRemote(const char[], const short&);
 
     };
 

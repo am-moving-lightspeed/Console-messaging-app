@@ -9,7 +9,7 @@
 
 
 
-char getUserChoice();
+void getUserChoice(char&);
 void getServerAddress(char[], int&);
 
 
@@ -21,11 +21,14 @@ int main(int argc, char argv[]) {
 
 
     char userChoice;
-    char kbInput[DEFAULT_BUFFER_SIZE];
+    char kbInput[MAX_USERNAME_LENGTH];
 
 
-    std::cout << "Choose option by inserting its number:\n1) Start session,\n2) Connect to session.\n\n> ";
-    userChoice = getUserChoice();
+    std::cout << "Choose option by inserting its number:\n1) Start session,\n2) Connect to session.\n> ";
+    getUserChoice(userChoice);
+
+    std::cout << "\nYour username (will be displayed to the one you gonna chat with): ";
+    std::cin.getline(kbInput, MAX_USERNAME_LENGTH);
 
 
     switch (userChoice) {
@@ -33,12 +36,18 @@ int main(int argc, char argv[]) {
         {
             Server server;
 
-            int ret = server.initSession();
-            if (ret != 0) {
-                return ret;
+            server.setUsername(kbInput);
+            int exitCode = server.initSession();
+            if (exitCode != 0) {
+                return exitCode;
             }
 
-            ret = server.startSession();
+            exitCode = server.startSession();
+            if (exitCode != 0) {
+                return exitCode;
+            }
+
+            server.startChat();
 
             break;
         }
@@ -50,6 +59,21 @@ int main(int argc, char argv[]) {
             getServerAddress(ipv4, port);
 
             Client client;
+
+            client.setUsername(kbInput);
+            int exitCode = client.initSession();
+            if (exitCode != 0) {
+                return exitCode;
+            }
+
+            client.setRemote(ipv4, port);
+            exitCode = client.startSession();
+            if (exitCode != 0) {
+                return exitCode;
+            }
+
+            client.startChat();
+
             break;
         }
 
@@ -58,44 +82,13 @@ int main(int argc, char argv[]) {
     }
 
 
-
-
-
-
-    /*while (true) {
-        FD_ZERO(&fr);
-        FD_ZERO(&fw);
-        FD_ZERO(&fe);
-
-        FD_SET(tcpSocket, &fr);
-        FD_SET(tcpSocket, &fe);
-
-        timeval tv;
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
-        ret = select(tcpSocket, &fr, &fw, &fe, &tv);
-
-        if (ret < 0) {
-            std::cout << "Available";
-        }
-        else if (ret == 0) {
-            std::cout << "Unavailable";
-        }
-        else {
-            std::cout << "Error";
-        }
-    }*/
-
-
     WSACleanup();
     return 0;
 }
 
 
 
-char getUserChoice() {
-
-    char userChoice;
+void getUserChoice(char& userChoice) {
 
     while (true) {
         std::cin.get(userChoice);
@@ -103,14 +96,13 @@ char getUserChoice() {
         if (userChoice != '1' && userChoice != '2') {
 
             std::cin.ignore(LLONG_MAX, '\n');
-            std::cout << "Wrong value. Maybe different\n> ";
+            std::cout << "Wrong value. Maybe different?\n> ";
         }
         else {
+            std::cin.ignore(LLONG_MAX, '\n');
             break;
         }
     }
-
-    return userChoice;
 }
 
 
@@ -120,12 +112,12 @@ void getServerAddress(char ipv4[], int& port) {
     using namespace p2p_chat::global;
 
 
-    std::cin.ignore(LLONG_MAX, '\n');
     std::cout << "Address (IPv4): ";
     std::cin.getline(ipv4, MAX_IPV4_LENGTH);
 
     std::cout << "Port: ";
     std::cin >> port;
+    std::cin.ignore(LLONG_MAX, '\n');
 
     if (port < 1024 && port > sizeof(short)) {
         port = p2p_chat::global::DEFAULT_SERVER_PORT;

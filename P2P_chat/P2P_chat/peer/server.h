@@ -1,6 +1,7 @@
 #pragma once
 
 #include <winsock.h>
+#include <thread>
 
 #include "peer.h"
 
@@ -11,10 +12,23 @@
 
 namespace p2p_chat {
 
+    using namespace global;
+
+
+
     class Server sealed : public Peer {
 
         public:
+            Server();
+
             virtual int startSession() override;
+
+
+        protected:
+            SOCKET mClientSocketForTcpConn;
+
+            void startAcceptingConnectionRequests();
+            void acceptIncomingConnectionRequest();
 
     };
 }
