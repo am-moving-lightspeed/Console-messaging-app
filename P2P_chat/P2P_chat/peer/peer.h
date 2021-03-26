@@ -38,12 +38,17 @@ namespace p2p_chat {
                 unsigned long long id;
                 char message[BUFFER_SIZE];
                 char author[MAX_USERNAME_LENGTH];
+
+
+                void toString(char[]);
             };
+
 
             char mUsername[MAX_USERNAME_LENGTH];
             char mRemoteUsername[MAX_USERNAME_LENGTH];
 
-            std::list<Message> mHistory;
+            bool mIsWrongOrder = false;
+            std::list<Message*> mHistory;
             bool mIsListLocked = false;
 
             bool exitRequested = false;
@@ -53,7 +58,6 @@ namespace p2p_chat {
             SOCKADDR_IN mSaddrIn;
             SOCKADDR_IN mRemoteSaddrIn;
             
-            //
             unsigned short mPort;
 
             SOCKET mTcpSocket;
@@ -66,7 +70,8 @@ namespace p2p_chat {
             void pushToHistory(const char[], const char[]);
             void appendId(const char[], char[]);
             void removeId(const char[], char[]);
-            void resolveMessageOrder(const Message&);
+            void resolveMessageOrder(Message* const);
+            void redrawChat();
 
     };
 

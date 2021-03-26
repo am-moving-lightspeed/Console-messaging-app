@@ -31,6 +31,11 @@ namespace p2p_chat {
         else {
             logOnSuccess("Winsock dll's been terminated");
         }
+
+
+        for (auto i = mHistory.begin(); i != mHistory.end(); i++) {
+            delete *i;
+        }
     }
 
 
@@ -120,8 +125,8 @@ namespace p2p_chat {
 
         std::thread* receiver = new std::thread(&Peer::receiveMessage, this);
 
+        std::cout << "you> ";
         while (!exitRequested) {
-            std::cout << "you> ";
             std::cin.getline(message, BUFFER_SIZE);
 
             if (std::cin.fail()) {
@@ -139,9 +144,14 @@ namespace p2p_chat {
                        reinterpret_cast<SOCKADDR*>(&mRemoteSaddrIn),
                        sizeof(SOCKADDR_IN));
             }
+            else if (message[0] == '\0') {
+                redrawChat();
+            }
             else {
+
                 appendId(message, out);
-                pushToHistory(out, mUsername);
+                pushToHistory(out, "you");
+                redrawChat();
 
                 sendto(mUdpSocket,
                        out,
@@ -184,22 +194,17 @@ namespace p2p_chat {
                 else {
                     removeId(message, in);
                     pushToHistory(message, mRemoteUsername);
-
-                    std::cout << "\n" << mRemoteUsername << "> " << in << "\nyou> ";
+                    redrawChat();
                 }
             }
 
-            int p = WSAGetLastError();
-            Sleep(100);
+            Sleep(200);
         }
     }
 
 
 
     void Peer::pushToHistory(const char message[], const char author[]) {
-
-        using namespace std::chrono;
-
 
         while (true) {
             if (!mIsListLocked) {
@@ -212,12 +217,12 @@ namespace p2p_chat {
                 memcpy_s(id, ID_SIZE, message, ID_SIZE);
                 id[ID_SIZE] = '\0';
 
-                Message msg;
-                msg.id = std::stoll(id);
-                memcpy_s(msg.message, BUFFER_SIZE, s.substr(ID_SIZE).c_str(), BUFFER_SIZE);
-                memcpy_s(msg.author, MAX_USERNAME_LENGTH, author, MAX_USERNAME_LENGTH);
+                Message* msg = new Message();
+                msg->id = std::stoll(id);
+                memcpy_s(msg->message, BUFFER_SIZE, s.substr(ID_SIZE).c_str(), BUFFER_SIZE);
+                memcpy_s(msg->author, MAX_USERNAME_LENGTH, author, MAX_USERNAME_LENGTH);
 
-                //resolveMessageOrder(msg);
+                resolveMessageOrder(msg);
 
                 mIsListLocked = false;
                 break;
@@ -254,6 +259,52 @@ namespace p2p_chat {
 
 
 
-    void p2p_chat::Peer::resolveMessageOrder(const Message& msg) {}
+    void Peer::resolveMessageOrder(Message* const msg) {
+
+        if (mHistory.size() > 0) {
+            for (auto i = mHistory.begin(), j = ++mHistory.begin(); j != mHistory.end(); i++, j++) {
+
+                if (msg->id < (*j)->id) {
+
+                    mIsWrongOrder = true;
+                    mHistory.insert(i, msg);
+
+                    return;
+                }
+            }
+        }
+
+        mHistory.push_back(msg);
+    }
+
+
+
+    void Peer::Message::toString(char buf[]) {
+
+        unsigned int size = BUFFER_SIZE + MAX_USERNAME_LENGTH + 3;
+
+        std::string s(author);
+        s.append("> ").append(message);
+
+        memcpy_s(buf, size, s.c_str(), s.size() + 1);
+    }
+
+
+
+    void Peer::redrawChat() {
+
+        char buf[BUFFER_SIZE + MAX_USERNAME_LENGTH + 3];
+
+        clearScreen();
+        std::cout << DEFAULT_CHAT_HEADER;
+
+        for (auto i = mHistory.begin(); i != mHistory.end(); i++) {
+
+            (*i)->toString(buf);
+            std::cout << buf << std::endl;
+        }
+
+        std::cout << "you> ";
+    }
 
 }

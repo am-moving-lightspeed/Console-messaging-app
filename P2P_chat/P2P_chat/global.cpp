@@ -17,10 +17,5 @@ void p2p_chat::global::clearScreen() {
                                 coord00,
                                 &tmp);
 
-    //FillConsoleOutputAttribute(
-    //    hConsole, FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE,
-    //    sbi.dwSize.X * sbi.dwSize.Y, coord00, &tmp
-    //);
-
     SetConsoleCursorPosition(hConsole, coord00);
 }

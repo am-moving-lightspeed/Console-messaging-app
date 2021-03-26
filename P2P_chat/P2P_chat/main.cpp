@@ -1,5 +1,3 @@
-#define P2P_CHAT
-
 #include <iostream>
 #include <winsock.h>
 
