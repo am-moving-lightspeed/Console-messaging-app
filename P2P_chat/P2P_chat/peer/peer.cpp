@@ -114,12 +114,20 @@ namespace p2p_chat {
 
 
     int Peer::startChat() {
-        char message[DEFAULT_BUFFER_SIZE];
+
+        char message[BUFFER_SIZE];
+        char out[BUFFER_SIZE_WITH_ID];
+
         std::thread* receiver = new std::thread(&Peer::receiveMessage, this);
 
         while (!exitRequested) {
             std::cout << "you> ";
-            std::cin.getline(message, DEFAULT_PAYLOAD_SIZE);
+            std::cin.getline(message, BUFFER_SIZE);
+
+            if (std::cin.fail()) {
+                std::cin.clear();
+                std::cin.ignore(LLONG_MAX, '\n');
+            }
 
             if (strcmp(message, "\\EXIT") == 0) {
 
@@ -132,9 +140,12 @@ namespace p2p_chat {
                        sizeof(SOCKADDR_IN));
             }
             else {
+                appendId(message, out);
+                pushToHistory(out, mUsername);
+
                 sendto(mUdpSocket,
-                       message,
-                       DEFAULT_PAYLOAD_SIZE,
+                       out,
+                       BUFFER_SIZE_WITH_ID,
                        0,
                        reinterpret_cast<SOCKADDR*>(&mRemoteSaddrIn),
                        sizeof(SOCKADDR_IN));
@@ -151,14 +162,15 @@ namespace p2p_chat {
 
     void Peer::receiveMessage() {
 
-        char message[DEFAULT_BUFFER_SIZE];
+        char message[BUFFER_SIZE_WITH_ID];
+        char in[BUFFER_SIZE];
 
         while (!exitRequested) {
 
             int attrlen = sizeof(SOCKADDR_IN);
             int ret = recvfrom(mUdpSocket,
                                message,
-                               DEFAULT_PAYLOAD_SIZE,
+                               BUFFER_SIZE_WITH_ID,
                                0,
                                reinterpret_cast<SOCKADDR*>(&mRemoteSaddrIn),
                                &attrlen);
@@ -170,10 +182,78 @@ namespace p2p_chat {
                     exitRequested = true;
                 }
                 else {
-                    std::cout << "\n" << mRemoteUsername << "> " << message << "\nyou> ";
+                    removeId(message, in);
+                    pushToHistory(message, mRemoteUsername);
+
+                    std::cout << "\n" << mRemoteUsername << "> " << in << "\nyou> ";
                 }
             }
+
+            int p = WSAGetLastError();
+            Sleep(100);
         }
     }
+
+
+
+    void Peer::pushToHistory(const char message[], const char author[]) {
+
+        using namespace std::chrono;
+
+
+        while (true) {
+            if (!mIsListLocked) {
+
+                mIsListLocked = true;
+
+                std::string s(message);
+
+                char id[ID_SIZE + 1];
+                memcpy_s(id, ID_SIZE, message, ID_SIZE);
+                id[ID_SIZE] = '\0';
+
+                Message msg;
+                msg.id = std::stoll(id);
+                memcpy_s(msg.message, BUFFER_SIZE, s.substr(ID_SIZE).c_str(), BUFFER_SIZE);
+                memcpy_s(msg.author, MAX_USERNAME_LENGTH, author, MAX_USERNAME_LENGTH);
+
+                //resolveMessageOrder(msg);
+
+                mIsListLocked = false;
+                break;
+            }
+
+            Sleep(50);
+        }
+
+    }
+
+
+
+    void Peer::appendId(const char message[], char out[]) {
+
+        std::string s = std::to_string(
+            std::chrono::system_clock::now().time_since_epoch().count()
+        );
+
+        s.insert(0, ID_SIZE - s.size(), '0');
+
+        s.append(message);
+
+        memcpy_s(out, BUFFER_SIZE_WITH_ID, s.c_str(), BUFFER_SIZE_WITH_ID);
+
+    }
+
+
+
+    void Peer::removeId(const char message[], char out[]) {
+
+        std::string s(message);
+        memcpy_s(out, BUFFER_SIZE, s.substr(ID_SIZE).c_str(), BUFFER_SIZE);
+    }
+
+
+
+    void p2p_chat::Peer::resolveMessageOrder(const Message& msg) {}
 
 }

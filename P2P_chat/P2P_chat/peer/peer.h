@@ -3,6 +3,9 @@
 #include <winsock.h>
 #include <iostream>
 #include <thread>
+#include <list>
+#include <string>
+#include <chrono>
 
 #include "../global.h"
 
@@ -30,8 +33,18 @@ namespace p2p_chat {
 
 
         protected:
+            struct Message {
+
+                unsigned long long id;
+                char message[BUFFER_SIZE];
+                char author[MAX_USERNAME_LENGTH];
+            };
+
             char mUsername[MAX_USERNAME_LENGTH];
             char mRemoteUsername[MAX_USERNAME_LENGTH];
+
+            std::list<Message> mHistory;
+            bool mIsListLocked = false;
 
             bool exitRequested = false;
 
@@ -50,7 +63,10 @@ namespace p2p_chat {
             inline void logOnFailure(const char[]);
 
             void receiveMessage();
-            void sendMessage();
+            void pushToHistory(const char[], const char[]);
+            void appendId(const char[], char[]);
+            void removeId(const char[], char[]);
+            void resolveMessageOrder(const Message&);
 
     };
 

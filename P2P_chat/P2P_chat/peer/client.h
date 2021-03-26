@@ -3,6 +3,7 @@
 #include <winsock.h>
 
 #include "peer.h"
+#include "../global.h"
 
 
 

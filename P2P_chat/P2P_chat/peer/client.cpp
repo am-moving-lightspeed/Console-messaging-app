@@ -31,9 +31,13 @@ namespace p2p_chat {
             recv(mTcpSocket, mRemoteUsername, MAX_USERNAME_LENGTH, 0);
             send(mTcpSocket, mUsername, MAX_USERNAME_LENGTH, 0);
 
-            std::cout << "\nSuccessfuly connected to " << mRemoteUsername <<
-                ".\n\n\n\nYou can start chatting (type \"\\EXIT\" to leave).\n" <<
-                "Messages with no longer than 255 symbols are allowed.\n\n";
+            std::cout << "\nSuccessfuly connected to " << mRemoteUsername;
+
+            Sleep(1000);
+
+            clearScreen();
+
+            std::cout << DEFAULT_CHAT_HEADER;
 
             return 0;
         }

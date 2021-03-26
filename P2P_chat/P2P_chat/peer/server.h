@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "peer.h"
+#include "../global.h"
 
 
 

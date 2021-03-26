@@ -28,7 +28,6 @@ namespace p2p_chat {
         }
         else {
             logOnSuccess("started listening to incoming connection requests..");
-            std::cout << "(Type \"\\EXIT\" to abort).";
         }
 
         std::thread* acceptor = new std::thread(&Server::startAcceptingConnectionRequests, this);
@@ -62,7 +61,8 @@ namespace p2p_chat {
 
             count++;
             if (count % 10 == 0) {
-                std::cout << "\nStill looking for incoming requests (" << count * 10 << "sec).";
+                std::cout << "\nStill looking for incoming requests (" <<
+                    count * (tv.tv_sec + tv.tv_usec) << "s).";
             }
         }
     }
@@ -82,9 +82,13 @@ namespace p2p_chat {
             send(mClientSocketForTcpConn, mUsername, MAX_USERNAME_LENGTH, 0);
             recv(mClientSocketForTcpConn, mRemoteUsername, MAX_USERNAME_LENGTH, 0);
 
-            std::cout << "\n\n" << mRemoteUsername << " has successfuly connected to you.\n\n\n\n" <<
-                "You can start chatting (type \"\\EXIT\" to leave).\n" <<
-                "Messages with no longer than 255 symbols are allowed.\n\n";
+            std::cout << "\n\n" << mRemoteUsername << " has successfuly connected to you.";
+
+            Sleep(1000);
+
+            clearScreen();
+
+            std::cout << DEFAULT_CHAT_HEADER;
         }
     }
 

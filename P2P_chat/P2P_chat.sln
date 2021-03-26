@@ -9,24 +9,32 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "temp", "temp\temp.vcxproj",
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|Win32.Build.0 = Debug|Win32
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|x64.ActiveCfg = Debug|x64
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|x64.Build.0 = Debug|x64
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|x86.ActiveCfg = Debug|Win32
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Debug|x86.Build.0 = Debug|Win32
+		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|Win32.ActiveCfg = Release|Win32
+		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|Win32.Build.0 = Release|Win32
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|x64.ActiveCfg = Release|x64
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|x64.Build.0 = Release|x64
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|x86.ActiveCfg = Release|Win32
 		{D7748E7C-CD51-47D0-BF60-ADED2773209E}.Release|x86.Build.0 = Release|Win32
+		{B4460901-9E58-44D0-9592-A72E35C820FE}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Debug|x64.ActiveCfg = Debug|x64
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Debug|x64.Build.0 = Debug|x64
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Debug|x86.ActiveCfg = Debug|Win32
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Debug|x86.Build.0 = Debug|Win32
+		{B4460901-9E58-44D0-9592-A72E35C820FE}.Release|Win32.ActiveCfg = Release|Win32
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Release|x64.ActiveCfg = Release|x64
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Release|x64.Build.0 = Release|x64
 		{B4460901-9E58-44D0-9592-A72E35C820FE}.Release|x86.ActiveCfg = Release|Win32
