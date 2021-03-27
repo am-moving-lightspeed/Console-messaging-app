@@ -23,13 +23,13 @@ namespace p2p_chat {
     class Peer {
 
         public:
+            Peer();
             ~Peer();
 
             void setUsername(const char[]);
-            virtual int startChat();
-            virtual int initSession();
-
-            virtual int startSession() = 0;
+            int initSession();
+            int startSession();
+            int startChat();
 
 
         protected:
@@ -47,21 +47,26 @@ namespace p2p_chat {
             char mUsername[MAX_USERNAME_LENGTH];
             char mRemoteUsername[MAX_USERNAME_LENGTH];
 
-            bool mIsWrongOrder = false;
             std::list<Message*> mHistory;
-            bool mIsListLocked = false;
 
-            bool exitRequested = false;
-
-            WSADATA mWsaData;
+            bool mRemoteSaddrMutex = false;
+            bool mListMutex = false;
+            bool mExitRequested = false;
 
             SOCKADDR_IN mSaddrIn;
             SOCKADDR_IN mRemoteSaddrIn;
-            
             unsigned short mPort;
 
-            SOCKET mTcpSocket;
+            SOCKET mTcpSocketConnector;
+            SOCKET mTcpSocketListener;
             SOCKET mUdpSocket;
+
+            void getRemoteAddress();
+            int tryBindSockets();
+            int tryBindTcpSocket(const SOCKET&, unsigned short&);
+
+            void startAcceptingConnectionRequests();
+            void acceptIncomingConnectionRequest();
 
             inline void logOnSuccess(const char[]);
             inline void logOnFailure(const char[]);
@@ -71,6 +76,7 @@ namespace p2p_chat {
             void appendId(const char[], char[]);
             void removeId(const char[], char[]);
             void resolveMessageOrder(Message* const);
+
             void redrawChat();
 
     };

@@ -8,21 +8,32 @@ namespace p2p_chat {
 
 
 
+    Peer::Peer() {
+
+        mPort = DEFAULT_PORT;
+
+        mSaddrIn.sin_family = AF_INET;
+        mSaddrIn.sin_port = htons(mPort);
+        mSaddrIn.sin_addr.s_addr = INADDR_ANY;
+        memset(&(mSaddrIn.sin_zero), 0, 8);
+    }
+
+
+
     Peer::~Peer() {
 
-        if (closesocket(mTcpSocket) != 0) {
-            logOnFailure("failed to close TCP socket");
+        if (closesocket(mTcpSocketListener) != 0) {
+            logOnFailure("failed to close TCP l-socket");
         }
-        else {
-            std::cout << "\n\n";
-            logOnSuccess("TCP socket's been successfully closed");
+        else if (closesocket(mTcpSocketConnector) != 0) {
+            logOnFailure("failed to close TCP c-socket");
         }
-
-        if (closesocket(mUdpSocket) != 0) {
+        else if (closesocket(mUdpSocket) != 0) {
             logOnFailure("failed to close UDP socket");
         }
         else {
-            logOnSuccess("UDP socket's been successfully closed");
+            std::cout << "\n\n";
+            logOnSuccess("Sockets' been successfully closed");
         }
 
         if (WSACleanup() != 0) {
@@ -64,7 +75,8 @@ namespace p2p_chat {
 
     int Peer::initSession() {
 
-        if (WSAStartup(MAKEWORD(2, 2), &mWsaData) != 0) {
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 
             logOnFailure("occured at WSAStartup() call");
             return WSAGetLastError();
@@ -74,9 +86,10 @@ namespace p2p_chat {
         }
 
 
-        mTcpSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        mTcpSocketListener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        mTcpSocketConnector = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         mUdpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (mTcpSocket < 0 || mUdpSocket < 0) {
+        if (mTcpSocketListener < 0 || mTcpSocketConnector < 0 || mUdpSocket < 0) {
 
             logOnFailure("failed to create sockets");
             return WSAGetLastError();
@@ -87,33 +100,228 @@ namespace p2p_chat {
 
 
         BOOL false_ = 0;
-        if (setsockopt(mTcpSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&false_), sizeof(BOOL)) != 0 ||
-            bind(mTcpSocket, reinterpret_cast<SOCKADDR*>(&mSaddrIn), sizeof(SOCKADDR_IN)) != 0) {
+        BOOL true_ = 1;
+        u_long opt = 1;
+        if (setsockopt(mTcpSocketListener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&false_), sizeof(BOOL)) != 0 ||
+            setsockopt(mTcpSocketConnector, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&false_), sizeof(BOOL)) != 0 ||
+            setsockopt(mUdpSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&true_), sizeof(BOOL)) != 0 ||
+            ioctlsocket(mUdpSocket, FIONBIO, &opt) != 0) {
 
-            logOnFailure("failed to bind TCP socket");
+            logOnFailure("failed to set sockets' options");
             return WSAGetLastError();
         }
         else {
-            logOnSuccess("TCP socket's been bound");
+            logOnSuccess("sockets' options' been set");
         }
 
 
-        BOOL true_ = 1;
-        u_long opt = 1;
-        if (setsockopt(mUdpSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&true_), sizeof(BOOL)) != 0 ||
-            ioctlsocket(mUdpSocket, FIONBIO, &opt) != 0 ||
-            bind(mUdpSocket, reinterpret_cast<SOCKADDR*>(&mSaddrIn), sizeof(SOCKADDR_IN)) != 0) {
+        return tryBindSockets();
+    }
+
+
+
+    int Peer::tryBindSockets() {
+
+        if (tryBindTcpSocket(mTcpSocketListener, mPort) != 0) {
+
+            logOnFailure("failed to bind TCP l-socket");
+            return WSAGetLastError();
+        }
+        else {
+            logOnSuccess("TCP l-socket's been bound");
+        }
+
+        u_short tmp = mPort + 1;
+        if (tryBindTcpSocket(mTcpSocketConnector, tmp) != 0) {
+
+            logOnFailure("failed to bind TCP c-socket");
+            return WSAGetLastError();
+        }
+        else {
+            logOnSuccess("TCP c-socket's been bound");
+        }
+
+
+        if (bind(mUdpSocket, reinterpret_cast<SOCKADDR*>(&mSaddrIn), sizeof(SOCKADDR_IN)) != 0) {
 
             logOnFailure("failed to bind UDP socket");
-            std::cout << WSAGetLastError();
             return WSAGetLastError();
         }
         else {
             logOnSuccess("UDP socket's been bound");
+            std::cout << "(port " << mPort << ")\n";
+        }
+
+        return 0;
+    }
+
+
+
+    int Peer::tryBindTcpSocket(const SOCKET& sock, unsigned short& port) {
+
+        while (port < USHRT_MAX - 1) {
+
+            if (bind(sock, reinterpret_cast<SOCKADDR*>(&mSaddrIn), sizeof(SOCKADDR_IN)) != 0) {
+
+                if (WSAGetLastError() != WSAEADDRINUSE) {
+                    return WSAGetLastError();
+                }
+
+                port += 1;
+                mSaddrIn.sin_port = htons(port);
+            }
+            else {
+                break;
+            }
+        }
+
+        return 0;
+    }
+
+
+
+    int Peer::startSession() {
+
+        if (listen(mTcpSocketListener, 1) != 0) {
+
+            logOnFailure("failed starting listening to port");
+            return WSAGetLastError();
+        }
+        else {
+            logOnSuccess("started listening to incoming connection requests..");
         }
 
 
+        getRemoteAddress();
+
+        std::thread* acceptor = new std::thread(&Peer::startAcceptingConnectionRequests, this);
+
+        int count = 0;
+        while (true) {
+            if (connect(mTcpSocketConnector, reinterpret_cast<SOCKADDR*>(&mRemoteSaddrIn), sizeof(SOCKADDR_IN)) != 0) {
+
+                if (WSAGetLastError() != WSAECONNREFUSED) {
+
+                    logOnFailure("failed to connect");
+                    return WSAGetLastError();
+                }
+            }
+            else {
+                send(mTcpSocketConnector, mUsername, MAX_USERNAME_LENGTH, 0);
+                break;
+            }
+
+            if (count % 1 == 0) {
+                std::cout << "\nStill trying to connect.";
+            }
+            count++;
+
+            Sleep(5000);
+        }
+
+
+        acceptor->join();
+
+        delete acceptor;
         return 0;
+    }
+
+
+
+    void Peer::getRemoteAddress() {
+
+        using namespace p2p_chat::global;
+
+
+        char ipv4[MAX_IPV4_LENGTH];
+        std::cout << "\nEnter remote address\nAddress (IPv4): ";
+        std::cin.getline(ipv4, MAX_IPV4_LENGTH);
+
+        if (std::cin.fail()) {
+            std::cin.clear();
+            std::cin.ignore(LLONG_MAX, '\0');
+        }
+
+
+        unsigned short port;
+        std::cout << "Port: ";
+        std::cin >> port;
+        std::cin.ignore(LLONG_MAX, '\n');
+
+        if (port <= 1024 && port > USHRT_MAX - 1) {
+            port = DEFAULT_PORT;
+        }
+
+        while (true) {
+            if (!mRemoteSaddrMutex) {
+                mRemoteSaddrMutex = true;
+
+                mRemoteSaddrIn.sin_family = AF_INET;
+                mRemoteSaddrIn.sin_addr.s_addr = inet_addr(ipv4);
+                mRemoteSaddrIn.sin_port = htons(port);
+                memset(&(mRemoteSaddrIn.sin_zero), 0, 8);
+
+                mRemoteSaddrMutex = false;
+                break;
+            }
+
+            Sleep(500);
+        }
+    }
+
+
+
+    void Peer::startAcceptingConnectionRequests() {
+
+        FD_SET fr;
+        TIMEVAL tv;
+
+        while (!mExitRequested) {
+
+            FD_ZERO(&fr);
+            FD_SET(mTcpSocketListener, &fr);
+
+            tv.tv_sec = 2;
+            tv.tv_usec = 0;
+
+            int ret = select(mTcpSocketListener + 1, &fr, nullptr, nullptr, &tv);
+            if (ret > 0) {
+
+                std::cout << "\nProcessing incoming connection...";
+                acceptIncomingConnectionRequest();
+                break;
+            }
+        }
+    }
+
+
+
+    void Peer::acceptIncomingConnectionRequest() {
+
+        int addrlen = sizeof(SOCKADDR_IN);
+
+        while (true) {
+
+            if (!mRemoteSaddrMutex) {
+                mRemoteSaddrMutex = true;
+
+                SOCKET socket = accept(mTcpSocketListener, reinterpret_cast<SOCKADDR*>(&mRemoteSaddrIn), &addrlen);
+
+                if (socket < 0) {
+                    logOnFailure("failed to accept incoming connection");
+                }
+                else {
+                    recv(socket, mRemoteUsername, MAX_USERNAME_LENGTH, 0);
+
+                    std::cout << "\n" << mRemoteUsername << " has successfuly connected to you.";
+                }
+
+                mRemoteSaddrMutex = false;
+                break;
+            }
+
+            Sleep(500);
+        }
     }
 
 
@@ -123,10 +331,12 @@ namespace p2p_chat {
         char message[BUFFER_SIZE];
         char out[BUFFER_SIZE_WITH_ID];
 
+        Sleep(1000);
+        redrawChat();
+
         std::thread* receiver = new std::thread(&Peer::receiveMessage, this);
 
-        std::cout << "you> ";
-        while (!exitRequested) {
+        while (!mExitRequested) {
             std::cin.getline(message, BUFFER_SIZE);
 
             if (std::cin.fail()) {
@@ -136,7 +346,7 @@ namespace p2p_chat {
 
             if (strcmp(message, "\\EXIT") == 0) {
 
-                exitRequested = true;
+                mExitRequested = true;
                 sendto(mUdpSocket,
                        "\\EXIT\0",
                        7,
@@ -148,7 +358,6 @@ namespace p2p_chat {
                 redrawChat();
             }
             else {
-
                 appendId(message, out);
                 pushToHistory(out, "you");
                 redrawChat();
@@ -175,7 +384,7 @@ namespace p2p_chat {
         char message[BUFFER_SIZE_WITH_ID];
         char in[BUFFER_SIZE];
 
-        while (!exitRequested) {
+        while (!mExitRequested) {
 
             int attrlen = sizeof(SOCKADDR_IN);
             int ret = recvfrom(mUdpSocket,
@@ -189,7 +398,7 @@ namespace p2p_chat {
                 if (strcmp(message, "\\EXIT\0") == 0) {
 
                     std::cout << "\nYour companion has left the chat (press Enter).";
-                    exitRequested = true;
+                    mExitRequested = true;
                 }
                 else {
                     removeId(message, in);
@@ -207,9 +416,9 @@ namespace p2p_chat {
     void Peer::pushToHistory(const char message[], const char author[]) {
 
         while (true) {
-            if (!mIsListLocked) {
 
-                mIsListLocked = true;
+            if (!mListMutex) {
+                mListMutex = true;
 
                 std::string s(message);
 
@@ -224,7 +433,7 @@ namespace p2p_chat {
 
                 resolveMessageOrder(msg);
 
-                mIsListLocked = false;
+                mListMutex = false;
                 break;
             }
 
@@ -266,9 +475,7 @@ namespace p2p_chat {
 
                 if (msg->id < (*j)->id) {
 
-                    mIsWrongOrder = true;
                     mHistory.insert(i, msg);
-
                     return;
                 }
             }
