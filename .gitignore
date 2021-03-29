@@ -1,0 +1,7 @@
+.*
+!.gitignore
+**/*.user
+**/*.filters
+**/Debug/
+**/Release/
+**/temp/
